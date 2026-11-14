@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Gesture Chords</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0b10;
+    --panel: rgba(20, 16, 26, 0.78);
+    --text: #f4ede4;
+    --muted: #a99f95;
+    --accent: #ffb547;
+    --accent2: #ff5d73;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font-family: "Prompt", system-ui, sans-serif; overflow: hidden; }
+  video { display: none; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; }
+  .top { position: fixed; top: 16px; left: 16px; right: 16px; display: flex; justify-content: space-between;
+    align-items: center; gap: 12px; }
+  .card { background: var(--panel); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px; padding: 10px 14px; }
+  .modes { display: flex; gap: 6px; }
+  .modes button { font: inherit; font-size: 14px; border: 1px solid rgba(255,255,255,0.15); background: transparent;
+    color: var(--muted); padding: 6px 14px; border-radius: 999px; cursor: pointer; }
+  .modes button.on { background: var(--accent); color: #1a0f0f; border-color: var(--accent); font-weight: 600; }
+  #status { font-size: 13px; color: var(--muted); }
+  .chips { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px;
+    flex-wrap: wrap; justify-content: center; width: calc(100% - 32px); max-width: 900px; }
+  .chip { background: var(--panel); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px;
+    padding: 8px 12px; text-align: center; min-width: 78px; transition: transform .12s, background .12s, border-color .12s; }
+  .chip .e { font-size: 26px; line-height: 1.1; }
+  .chip .n { font-weight: 800; font-size: 18px; color: var(--accent); }
+  .chip .h { font-size: 11px; color: var(--muted); }
+  .chip.on { transform: translateY(-6px) scale(1.06); border-color: var(--accent); background: rgba(255,181,71,0.18); }
+  #start { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 18px; background: radial-gradient(circle at 50% 40%, #2a1a22, var(--bg) 70%);
+    z-index: 10; text-align: center; padding: 16px; }
+  #start h1 { font-size: clamp(36px, 7vw, 72px); margin: 0; font-weight: 800;
+    background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  #start p { color: var(--muted); max-width: 520px; margin: 0; line-height: 1.6; }
+  #start button { font: inherit; font-weight: 600; font-size: 18px; padding: 14px 34px; border: 0; border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2)); color: #1a0f0f; cursor: pointer; }
+  #start button:disabled { opacity: .5; cursor: wait; }
+  @media (max-width: 640px) { .chip { min-width: 60px; padding: 6px 8px; } .chip .e { font-size: 20px; } }
+</style>
+</head>
+<body>
+<video id="video" playsinline muted></video>
+<canvas id="canvas"></canvas>
+
+<div class="top">
+  <div class="card modes" id="modes">
+    <button data-mode="pad" class="on">🎹 Pad (ค้างเสียง)</button>
+    <button data-mode="pluck">🎸 ดีด</button>
+    <button data-mode="piano">🎵 เปียโน</button>
+  </div>
+  <div class="card" id="status">กำลังเตรียม…</div>
+</div>
+
+<div class="chips" id="chips"></div>
+
+<div id="start">
+  <h1>Gesture Chords</h1>
+  <p>ชูมือให้กล้องเห็น แล้วทำท่าทาง — แต่ละท่าจะเล่นคอร์ดต่างกัน<br>ใช้ได้ทั้งสองมือ · ไม่มีกล้องก็กดปุ่ม 1–7 แทนได้</p>
+  <button id="go" disabled>กำลังโหลดโมเดล…</button>
+</div>
+
+<script type="module">
+import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
+
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const statusEl = document.getElementById("status");
+const goBtn = document.getElementById("go");
+
+// ---------- Gestures → chords ----------
+// key = fingers up as bits [thumb,index,middle,ring,pinky]
+const GESTURES = [
+  { id: "C",  emoji: "☝️", hint: "ชี้ 1 นิ้ว",   match: u => !u[0] && u[1] && !u[2] && !u[3] && !u[4], notes: [48, 55, 60, 64, 67] },
+  { id: "G",  emoji: "✌️", hint: "2 นิ้ว",       match: u => !u[0] && u[1] && u[2] && !u[3] && !u[4], notes: [43, 50, 55, 59, 62, 67] },
+  { id: "Am", emoji: "🤟", hint: "3 นิ้ว",       match: u => !u[0] && u[1] && u[2] && u[3] && !u[4], notes: [45, 52, 57, 60, 64] },
+  { id: "F",  emoji: "🖖", hint: "4 นิ้ว",       match: u => !u[0] && u[1] && u[2] && u[3] && u[4], notes: [41, 48, 53, 57, 60, 65] },
+  { id: "Em", emoji: "🖐️", hint: "แบมือ",        match: u => u[0] && u[1] && u[2] && u[3] && u[4], notes: [40, 47, 52, 55, 59, 64] },
+  { id: "Dm", emoji: "👍", hint: "ชูโป้ง",       match: u => u[0] && !u[1] && !u[2] && !u[3] && !u[4], notes: [50, 57, 62, 65, 69] },
+  { id: "E7", emoji: "🤘", hint: "ร็อก (ชี้+ก้อย)", match: u => u[1] && !u[2] && !u[3] && u[4], notes: [40, 47, 50, 56, 59, 64] },
+];
+const FIST = { id: "—", emoji: "✊", hint: "กำมือ = หยุด" };
+
+const chipsEl = document.getElementById("chips");
+for (const g of [...GESTURES, FIST]) {
+  const el = document.createElement("div");
+  el.className = "chip"; el.dataset.id = g.id;
+  el.innerHTML = `<div class="e">${g.emoji}</div><div class="n">${g.id}</div><div class="h">${g.hint}</div>`;
+  chipsEl.appendChild(el);
+}
+function highlightChips(ids) {
+  for (const el of chipsEl.children) el.classList.toggle("on", ids.includes(el.dataset.id));
+}
+
+// ---------- Audio ----------
+let audio, master, reverb;
+let mode = "pad";
+const midiToHz = m => 440 * Math.pow(2, (m - 69) / 12);
+
+function initAudio() {
+  audio = new (window.AudioContext || window.webkitAudioContext)();
+  const comp = audio.createDynamicsCompressor();
+  master = audio.createGain(); master.gain.value = 0.6;
+  // simple reverb from decaying noise impulse
+  reverb = audio.createConvolver();
+  const len = audio.sampleRate * 2.2, ir = audio.createBuffer(2, len, audio.sampleRate);
+  for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3); }
+  reverb.buffer = ir;
+  const wet = audio.createGain(); wet.gain.value = 0.25;
+  master.connect(comp); master.connect(reverb).connect(wet).connect(comp);
+  comp.connect(audio.destination);
+}
+
+// Karplus–Strong pluck
+const pluckCache = new Map();
+function pluckBuffer(midi) {
+  if (pluckCache.has(midi)) return pluckCache.get(midi);
+  const sr = audio.sampleRate, N = Math.round(sr / midiToHz(midi));
+  const buf = audio.createBuffer(1, Math.floor(sr * 3), sr), out = buf.getChannelData(0);
+  const ring = new Float32Array(N);
+  for (let i = 0; i < N; i++) ring[i] = Math.random() * 2 - 1;
+  for (let i = 1; i < N; i++) ring[i] = 0.5 * (ring[i] + ring[i - 1]);
+  const decay = 0.996 + Math.min(0.0035, (64 - midi) * 0.00006);
+  for (let i = 0, idx = 0; i < out.length; i++) {
+    const nx = (idx + 1) % N; out[i] = ring[idx]; ring[idx] = decay * 0.5 * (ring[idx] + ring[nx]); idx = nx;
+  }
+  pluckCache.set(midi, buf); return buf;
+}
+
+// a "voice" = a chord currently sounding for one hand; returns stop()
+function playChord(notes, vel = 0.8) {
+  const t = audio.currentTime;
+  const out = audio.createGain(); out.connect(master);
+  const nodes = [];
+  if (mode === "pluck") {
+    notes.forEach((m, k) => {
+      const s = audio.createBufferSource(); s.buffer = pluckBuffer(m);
+      const g = audio.createGain(); g.gain.value = 0.35 * vel;
+      s.connect(g).connect(out); s.start(t + k * 0.022); nodes.push(s);
+    });
+  } else if (mode === "piano") {
+    notes.forEach((m) => {
+      const f = midiToHz(m);
+      const g = audio.createGain();
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.16 * vel, t + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 2.8);
+      g.connect(out);
+      for (const [type, mul, amp] of [["triangle", 1, 1], ["sine", 2, 0.35], ["sine", 3, 0.12]]) {
+        const o = audio.createOscillator(); o.type = type; o.frequency.value = f * mul;
+        const og = audio.createGain(); og.gain.value = amp; o.connect(og).connect(g);
+        o.start(t); o.stop(t + 3); nodes.push(o);
+      }
+    });
+  } else { // pad: sustains until stop()
+    const lp = audio.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 1400; lp.Q.value = 0.5;
+    const g = audio.createGain();
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.09 * vel, t + 0.25);
+    lp.connect(g).connect(out);
+    notes.forEach((m) => {
+      for (const det of [-7, 7]) {
+        const o = audio.createOscillator(); o.type = "sawtooth";
+        o.frequency.value = midiToHz(m + 12 * (m < 48 ? 1 : 0)); o.detune.value = det;
+        o.connect(lp); o.start(t); nodes.push(o);
+      }
+    });
+  }
+  return {
+    stop() {
+      const now = audio.currentTime, rel = mode === "pad" ? 0.6 : 0.25;
+      out.gain.setTargetAtTime(0, now, rel / 3);
+      nodes.forEach(n => { try { n.stop(now + rel * 2); } catch {} });
+    }
+  };
+}
+
+// ---------- Hand gesture ----------
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+function fingersUp(lm) {
+  const w = lm[0];
+  const thumb = dist(lm[4], lm[17]) > dist(lm[3], lm[17]) * 1.05 && dist(lm[4], lm[5]) > dist(lm[2], lm[5]) * 0.9;
+  const rest = [[8, 6], [12, 10], [16, 14], [20, 18]].map(([tip, pip]) => dist(lm[tip], w) > dist(lm[pip], w) * 1.12);
+  return [thumb, ...rest];
+}
+function classify(lm) {
+  const u = fingersUp(lm);
+  if (!u.some(Boolean)) return FIST;
+  return GESTURES.find(g => g.match(u)) || null;
+}
+
+// per-hand state, keyed by handedness label ("Left"/"Right")
+const handState = {};
+const STABLE_FRAMES = 4;
+function updateHand(key, gesture, now) {
+  const st = handState[key] ||= { cand: null, n: 0, active: null, voice: null, seen: now };
+  st.seen = now;
+  if (gesture === st.cand) st.n++; else { st.cand = gesture; st.n = 1; }
+  if (st.n < STABLE_FRAMES || !gesture || gesture === st.active) return;
+  // gesture changed and is stable
+  st.voice?.stop(); st.voice = null;
+  st.active = gesture;
+  if (gesture !== FIST) {
+    st.voice = playChord(gesture.notes);
+    ripples.push({ key, t: now, label: gesture.id });
+  }
+}
+function releaseLostHands(now) {
+  for (const [k, st] of Object.entries(handState)) {
+    if (now - st.seen > 250 && st.active) { st.voice?.stop(); st.voice = null; st.active = null; st.cand = null; }
+  }
+}
+
+// ---------- Keyboard fallback ----------
+let kbVoice = null;
+window.addEventListener("keydown", (e) => {
+  if (!audio || e.repeat) return;
+  const n = parseInt(e.key, 10);
+  if (n >= 1 && n <= GESTURES.length) {
+    kbVoice?.stop();
+    kbVoice = playChord(GESTURES[n - 1].notes);
+    ripples.push({ key: "kb", t: performance.now(), label: GESTURES[n - 1].id, x: W / 2, y: H / 2 });
+    highlightChips([GESTURES[n - 1].id]);
+  }
+});
+window.addEventListener("keyup", (e) => {
+  const n = parseInt(e.key, 10);
+  if (n >= 1 && n <= GESTURES.length && mode === "pad") { kbVoice?.stop(); kbVoice = null; highlightChips([]); }
+});
+
+document.getElementById("modes").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  mode = b.dataset.mode;
+  for (const x of document.querySelectorAll("#modes button")) x.classList.toggle("on", x === b);
+  // restart held chords in new sound
+  for (const st of Object.values(handState)) {
+    if (st.active && st.active !== FIST && audio) { st.voice?.stop(); st.voice = playChord(st.active.notes); }
+  }
+});
+
+// ---------- Camera + model ----------
+let landmarker = null, camOn = false, lastVideoTime = -1, results = null;
+async function loadModel() {
+  try {
+    const fileset = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
+    const opts = (delegate) => ({
+      baseOptions: { modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task", delegate },
+      runningMode: "VIDEO", numHands: 2,
+    });
+    try { landmarker = await HandLandmarker.createFromOptions(fileset, opts("GPU")); }
+    catch { landmarker = await HandLandmarker.createFromOptions(fileset, opts("CPU")); }
+    goBtn.textContent = "เริ่ม 🎶"; statusEl.textContent = "พร้อมแล้ว";
+  } catch (e) {
+    console.error(e);
+    goBtn.textContent = "เล่นด้วยคีย์บอร์ด (โหลดโมเดลไม่สำเร็จ)"; statusEl.textContent = "โหลดโมเดลไม่สำเร็จ";
+  }
+  goBtn.disabled = false;
+}
+goBtn.addEventListener("click", async () => {
+  initAudio(); await audio.resume();
+  document.getElementById("start").style.display = "none";
+  if (!landmarker) { statusEl.textContent = "กดปุ่ม 1–7 เพื่อเล่นคอร์ด"; return; }
+  try {
+    video.srcObject = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720, facingMode: "user" } });
+    await video.play(); camOn = true;
+    statusEl.textContent = "ทำท่าทางหน้ากล้องได้เลย";
+  } catch (e) {
+    console.warn(e); statusEl.textContent = "เปิดกล้องไม่ได้ — กดปุ่ม 1–7 แทน";
+  }
+});
+
+// ---------- Render ----------
+let W = 0, H = 0;
+function resize() {
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  W = innerWidth; H = innerHeight;
+  canvas.width = W * dpr; canvas.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+addEventListener("resize", resize); resize();
+
+const CONN = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
+const ripples = [];
+const handPos = {};
+
+function frame() {
+  const now = performance.now();
+  let dims = null;
+  if (camOn && video.readyState >= 2) {
+    const vr = video.videoWidth / video.videoHeight;
+    dims = vr > W / H ? { dw: H * vr, dh: H } : { dw: W, dh: W / vr };
+    ctx.save(); ctx.translate(W, 0); ctx.scale(-1, 1);
+    ctx.drawImage(video, (W - dims.dw) / 2, (H - dims.dh) / 2, dims.dw, dims.dh);
+    ctx.restore();
+    ctx.fillStyle = "rgba(13,11,16,0.5)"; ctx.fillRect(0, 0, W, H);
+    if (landmarker && video.currentTime !== lastVideoTime) {
+      lastVideoTime = video.currentTime;
+      results = landmarker.detectForVideo(video, now);
+    }
+  } else {
+    const g = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, Math.max(W, H) / 1.2);
+    g.addColorStop(0, "#22161d"); g.addColorStop(1, "#0d0b10");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  }
+
+  const activeIds = [];
+  if (dims && results?.landmarks) {
+    results.landmarks.forEach((lm, i) => {
+      const key = results.handedness?.[i]?.[0]?.categoryName || "h" + i;
+      const pts = lm.map(p => ({ x: (1 - p.x) * dims.dw + (W - dims.dw) / 2, y: p.y * dims.dh + (H - dims.dh) / 2 }));
+      handPos[key] = pts[9];
+      updateHand(key, classify(lm), now);
+      const st = handState[key];
+      const playing = st.active && st.active !== FIST;
+      if (st.active) activeIds.push(st.active.id);
+      // skeleton
+      ctx.strokeStyle = playing ? "#ffb547" : "rgba(244,237,228,0.6)"; ctx.lineWidth = 3;
+      for (const [a, b] of CONN) { ctx.beginPath(); ctx.moveTo(pts[a].x, pts[a].y); ctx.lineTo(pts[b].x, pts[b].y); ctx.stroke(); }
+      ctx.fillStyle = "#fff";
+      for (const p of pts) { ctx.beginPath(); ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2); ctx.fill(); }
+      // chord label above the hand
+      if (st.active) {
+        const top = pts.reduce((m, p) => p.y < m.y ? p : m, pts[0]);
+        ctx.font = "800 54px Prompt, sans-serif"; ctx.textAlign = "center";
+        ctx.fillStyle = playing ? "#ffb547" : "rgba(244,237,228,0.5)";
+        ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = 12;
+        ctx.fillText(st.active.id, pts[9].x, top.y - 24);
+        ctx.shadowBlur = 0;
+      }
+    });
+    highlightChips(activeIds);
+  }
+  releaseLostHands(now);
+
+  // ripples on each new chord
+  for (let i = ripples.length - 1; i >= 0; i--) {
+    const r = ripples[i], age = (now - r.t) / 900;
+    if (age > 1) { ripples.splice(i, 1); continue; }
+    const p = r.x != null ? r : handPos[r.key]; if (!p) continue;
+    ctx.strokeStyle = `rgba(255,93,115,${1 - age})`; ctx.lineWidth = 4 * (1 - age);
+    ctx.beginPath(); ctx.arc(p.x, p.y, 40 + age * 180, 0, Math.PI * 2); ctx.stroke();
+    if (r.key === "kb") {
+      ctx.font = "800 96px Prompt, sans-serif"; ctx.textAlign = "center";
+      ctx.fillStyle = `rgba(255,181,71,${1 - age})`; ctx.fillText(r.label, p.x, p.y + 32);
+    }
+  }
+  requestAnimationFrame(frame);
+}
+
+loadModel();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
