@@ -58,6 +58,7 @@
     <button data-mode="pad" class="on">🎹 Pad (ค้างเสียง)</button>
     <button data-mode="pluck">🎸 ดีด</button>
     <button data-mode="piano">🎵 เปียโน</button>
+    <button id="testSound" type="button">🔊 ทดสอบเสียง</button>
   </div>
   <div class="card" id="status">กำลังเตรียม…</div>
 </div>
@@ -109,7 +110,13 @@ let mode = "pad";
 const midiToHz = m => 440 * Math.pow(2, (m - 69) / 12);
 
 function initAudio() {
-  audio = new (window.AudioContext || window.webkitAudioContext)();
+  // iPhone: let Web Audio play even when the silent switch is on (Safari 16.4+)
+  try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch {}
+  audio = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: "interactive" });
+  // pre-build pluck sounds in the background so the first strum has no hitch
+  const allNotes = [...new Set(GESTURES.flatMap(g => g.notes))];
+  const warm = () => { const m = allNotes.pop(); if (m == null) return; pluckBuffer(m); setTimeout(warm, 0); };
+  setTimeout(warm, 0);
   const comp = audio.createDynamicsCompressor();
   master = audio.createGain(); master.gain.value = 0.6;
   // simple reverb from decaying noise impulse
@@ -165,7 +172,7 @@ function playChord(notes, vel = 0.8) {
   } else { // pad: sustains until stop()
     const lp = audio.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 1400; lp.Q.value = 0.5;
     const g = audio.createGain();
-    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.09 * vel, t + 0.25);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.09 * vel, t + 0.03);
     lp.connect(g).connect(out);
     notes.forEach((m) => {
       for (const det of [-7, 7]) {
@@ -200,7 +207,7 @@ function classify(lm) {
 
 // per-hand state, keyed by handedness label ("Left"/"Right")
 const handState = {};
-const STABLE_FRAMES = 4;
+const STABLE_FRAMES = 2; // frames a gesture must hold before it plays (lower = faster, higher = fewer mistakes)
 function updateHand(key, gesture, now) {
   const st = handState[key] ||= { cand: null, n: 0, active: null, voice: null, seen: now };
   st.seen = now;
@@ -237,10 +244,28 @@ window.addEventListener("keyup", (e) => {
   if (n >= 1 && n <= GESTURES.length && mode === "pad") { kbVoice?.stop(); kbVoice = null; highlightChips([]); }
 });
 
+// browsers can suspend audio (tab switch, phone lock) — wake it on any touch/key
+function wakeAudio() { if (audio && audio.state !== "running") audio.resume().catch(() => {}); }
+addEventListener("pointerdown", wakeAudio);
+addEventListener("keydown", wakeAudio);
+document.addEventListener("visibilitychange", wakeAudio);
+
+function testChime() {
+  if (!audio) initAudio();
+  audio.resume().then(() => {
+    const v = playChord([60, 64, 67, 72], 1);
+    setTimeout(() => v.stop(), 900);
+    statusEl.textContent = audio.state === "running"
+      ? "🔊 ถ้าไม่ได้ยิน: เช็กเสียงเครื่อง / แท็บไม่ได้ปิดเสียง / มือถือปิดโหมดเงียบ"
+      : "เสียงยังถูกบล็อก (" + audio.state + ") — แตะหน้าจอแล้วลองใหม่";
+  });
+}
+document.getElementById("testSound").addEventListener("click", (e) => { e.stopPropagation(); testChime(); });
+
 document.getElementById("modes").addEventListener("click", (e) => {
-  const b = e.target.closest("button"); if (!b) return;
+  const b = e.target.closest("button[data-mode]"); if (!b) return;
   mode = b.dataset.mode;
-  for (const x of document.querySelectorAll("#modes button")) x.classList.toggle("on", x === b);
+  for (const x of document.querySelectorAll("#modes button[data-mode]")) x.classList.toggle("on", x === b);
   // restart held chords in new sound
   for (const st of Object.values(handState)) {
     if (st.active && st.active !== FIST && audio) { st.voice?.stop(); st.voice = playChord(st.active.notes); }
@@ -267,6 +292,7 @@ async function loadModel() {
 }
 goBtn.addEventListener("click", async () => {
   initAudio(); await audio.resume();
+  testChime(); // short chime so you know sound works
   document.getElementById("start").style.display = "none";
   if (!landmarker) { statusEl.textContent = "กดปุ่ม 1–7 เพื่อเล่นคอร์ด"; return; }
   try {
