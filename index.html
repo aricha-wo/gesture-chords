@@ -9,7 +9,9 @@
 <style>
   :root {
     --bg: #0d0b10;
-    --panel: rgba(20, 16, 26, 0.78);
+    --panel: rgba(20, 16, 26, 0.85);
+    --panel-solid: #17121d;
+    --line: rgba(255,255,255,0.1);
     --text: #f4ede4;
     --muted: #a99f95;
     --accent: #ffb547;
@@ -18,35 +20,59 @@
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
     font-family: "Prompt", system-ui, sans-serif; overflow: hidden; }
+  [hidden] { display: none !important; }
   video { display: none; }
   canvas { position: fixed; inset: 0; width: 100%; height: 100%; }
+  button, select { font: inherit; color: inherit; }
   .top { position: fixed; top: 16px; left: 16px; right: 16px; display: flex; justify-content: space-between;
-    align-items: center; gap: 12px; }
-  .card { background: var(--panel); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.08);
+    align-items: center; gap: 12px; flex-wrap: wrap; }
+  .card { background: var(--panel); backdrop-filter: blur(8px); border: 1px solid var(--line);
     border-radius: 14px; padding: 10px 14px; }
-  .modes { display: flex; gap: 6px; }
-  .modes button { font: inherit; font-size: 14px; border: 1px solid rgba(255,255,255,0.15); background: transparent;
+  .modes { display: flex; gap: 6px; flex-wrap: wrap; }
+  .pill { font-size: 14px; border: 1px solid rgba(255,255,255,0.15); background: transparent;
     color: var(--muted); padding: 6px 14px; border-radius: 999px; cursor: pointer; }
-  .modes button.on { background: var(--accent); color: #1a0f0f; border-color: var(--accent); font-weight: 600; }
+  .pill.on { background: var(--accent); color: #1a0f0f; border-color: var(--accent); font-weight: 600; }
+  .pill:focus-visible, .fbtn:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   #status { font-size: 13px; color: var(--muted); }
   .chips { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px;
-    flex-wrap: wrap; justify-content: center; width: calc(100% - 32px); max-width: 900px; }
-  .chip { background: var(--panel); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px;
+    flex-wrap: wrap; justify-content: center; width: calc(100% - 32px); max-width: 1000px; }
+  .chip { background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
     padding: 8px 12px; text-align: center; min-width: 78px; transition: transform .12s, background .12s, border-color .12s; }
-  .chip .e { font-size: 26px; line-height: 1.1; }
+  .chip .e { font-size: 15px; line-height: 1.4; letter-spacing: 1px; }
   .chip .n { font-weight: 800; font-size: 18px; color: var(--accent); }
-  .chip .h { font-size: 11px; color: var(--muted); }
+  .chip .k { font-size: 11px; color: var(--muted); }
   .chip.on { transform: translateY(-6px) scale(1.06); border-color: var(--accent); background: rgba(255,181,71,0.18); }
+
+  /* gesture editor */
+  #editor { position: fixed; top: 0; right: 0; bottom: 0; width: min(440px, 100%); background: var(--panel-solid);
+    border-left: 1px solid var(--line); z-index: 20; display: flex; flex-direction: column; }
+  #editor header { padding: 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); }
+  #editor h2 { margin: 0; font-size: 18px; }
+  #editor .hint { font-size: 12px; color: var(--muted); padding: 10px 16px 0; line-height: 1.5; }
+  #live { margin: 10px 16px 0; font-size: 13px; padding: 8px 12px; border-radius: 10px; background: rgba(255,255,255,0.05); }
+  #live b { color: var(--accent); }
+  #rows { flex: 1; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+  .row { border: 1px solid var(--line); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .row.dup { border-color: var(--accent2); }
+  .row .line { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .fbtn { border: 1px solid rgba(255,255,255,0.15); background: transparent; border-radius: 8px; padding: 4px 8px;
+    font-size: 12px; cursor: pointer; color: var(--muted); min-width: 44px; }
+  .fbtn.up { background: rgba(255,181,71,0.2); border-color: var(--accent); color: var(--text); }
+  select { background: #241c2c; border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 4px 8px; }
+  .row .warn { font-size: 12px; color: var(--accent2); }
+  .row .del { margin-left: auto; }
+  #editor footer { padding: 12px 16px; border-top: 1px solid var(--line); display: flex; gap: 8px; flex-wrap: wrap; }
+
   #start { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center;
     justify-content: center; gap: 18px; background: radial-gradient(circle at 50% 40%, #2a1a22, var(--bg) 70%);
-    z-index: 10; text-align: center; padding: 16px; }
+    z-index: 30; text-align: center; padding: 16px; }
   #start h1 { font-size: clamp(36px, 7vw, 72px); margin: 0; font-weight: 800;
     background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
   #start p { color: var(--muted); max-width: 520px; margin: 0; line-height: 1.6; }
-  #start button { font: inherit; font-weight: 600; font-size: 18px; padding: 14px 34px; border: 0; border-radius: 999px;
+  #go { font-weight: 600; font-size: 18px; padding: 14px 34px; border: 0; border-radius: 999px;
     background: linear-gradient(90deg, var(--accent), var(--accent2)); color: #1a0f0f; cursor: pointer; }
-  #start button:disabled { opacity: .5; cursor: wait; }
-  @media (max-width: 640px) { .chip { min-width: 60px; padding: 6px 8px; } .chip .e { font-size: 20px; } }
+  #go:disabled { opacity: .5; cursor: wait; }
+  @media (max-width: 640px) { .chip { min-width: 60px; padding: 6px 8px; } }
 </style>
 </head>
 <body>
@@ -55,19 +81,34 @@
 
 <div class="top">
   <div class="card modes" id="modes">
-    <button data-mode="pad" class="on">🎹 Pad (ค้างเสียง)</button>
-    <button data-mode="pluck">🎸 ดีด</button>
-    <button data-mode="piano">🎵 เปียโน</button>
-    <button id="testSound" type="button">🔊 ทดสอบเสียง</button>
+    <button class="pill on" data-mode="pad">🎹 Pad</button>
+    <button class="pill" data-mode="pluck">🎸 ดีด</button>
+    <button class="pill" data-mode="piano">🎵 เปียโน</button>
+    <button class="pill" id="testSound" type="button">🔊 ทดสอบเสียง</button>
+    <button class="pill" id="openEditor" type="button">✋ กำหนดท่าทาง</button>
   </div>
   <div class="card" id="status">กำลังเตรียม…</div>
 </div>
 
 <div class="chips" id="chips"></div>
 
+<aside id="editor" hidden>
+  <header>
+    <h2>กำหนดท่าทาง</h2>
+    <button class="pill" id="closeEditor" type="button">เสร็จ</button>
+  </header>
+  <div class="hint">แตะชื่อนิ้วเพื่อสลับ ชู/พับ หรือทำท่าหน้ากล้องแล้วกด 📷 ใช้ท่านี้ · กำมือ (พับทุกนิ้ว) สงวนไว้สำหรับหยุดเสียง · บันทึกอัตโนมัติในเครื่องนี้</div>
+  <div id="live">ท่าที่กล้องเห็นตอนนี้: <b id="liveText">—</b></div>
+  <div id="rows"></div>
+  <footer>
+    <button class="pill" id="addRow" type="button">＋ เพิ่มท่า</button>
+    <button class="pill" id="resetRows" type="button">คืนค่าเริ่มต้น</button>
+  </footer>
+</aside>
+
 <div id="start">
   <h1>Gesture Chords</h1>
-  <p>ชูมือให้กล้องเห็น แล้วทำท่าทาง — แต่ละท่าจะเล่นคอร์ดต่างกัน<br>ใช้ได้ทั้งสองมือ · ไม่มีกล้องก็กดปุ่ม 1–7 แทนได้</p>
+  <p>ชูมือให้กล้องเห็น แล้วทำท่าทาง — แต่ละท่าจะเล่นคอร์ดต่างกัน<br>ใช้ได้ทั้งสองมือ · ตั้งท่าเองได้ที่ปุ่ม ✋ กำหนดท่าทาง · ไม่มีกล้องก็กดปุ่มตัวเลขแทนได้</p>
   <button id="go" disabled>กำลังโหลดโมเดล…</button>
 </div>
 
@@ -80,32 +121,148 @@ const ctx = canvas.getContext("2d");
 const statusEl = document.getElementById("status");
 const goBtn = document.getElementById("go");
 
-// ---------- Gestures → chords ----------
-// key = fingers up as bits [thumb,index,middle,ring,pinky]
-const GESTURES = [
-  { id: "C",  emoji: "☝️", hint: "ชี้ 1 นิ้ว",   match: u => !u[0] && u[1] && !u[2] && !u[3] && !u[4], notes: [48, 55, 60, 64, 67] },
-  { id: "G",  emoji: "✌️", hint: "2 นิ้ว",       match: u => !u[0] && u[1] && u[2] && !u[3] && !u[4], notes: [43, 50, 55, 59, 62, 67] },
-  { id: "Am", emoji: "🤟", hint: "3 นิ้ว",       match: u => !u[0] && u[1] && u[2] && u[3] && !u[4], notes: [45, 52, 57, 60, 64] },
-  { id: "F",  emoji: "🖖", hint: "4 นิ้ว",       match: u => !u[0] && u[1] && u[2] && u[3] && u[4], notes: [41, 48, 53, 57, 60, 65] },
-  { id: "Em", emoji: "🖐️", hint: "แบมือ",        match: u => u[0] && u[1] && u[2] && u[3] && u[4], notes: [40, 47, 52, 55, 59, 64] },
-  { id: "Dm", emoji: "👍", hint: "ชูโป้ง",       match: u => u[0] && !u[1] && !u[2] && !u[3] && !u[4], notes: [50, 57, 62, 65, 69] },
-  { id: "E7", emoji: "🤘", hint: "ร็อก (ชี้+ก้อย)", match: u => u[1] && !u[2] && !u[3] && u[4], notes: [40, 47, 50, 56, 59, 64] },
-];
-const FIST = { id: "—", emoji: "✊", hint: "กำมือ = หยุด" };
+// ---------- Chords ----------
+const ROOTS = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"];
+const QUALITIES = {
+  "":     { name: "เมเจอร์", iv: [0, 4, 7] },
+  "m":    { name: "ไมเนอร์", iv: [0, 3, 7] },
+  "7":    { name: "7",       iv: [0, 4, 7, 10] },
+  "m7":   { name: "m7",      iv: [0, 3, 7, 10] },
+  "maj7": { name: "maj7",    iv: [0, 4, 7, 11] },
+  "sus4": { name: "sus4",    iv: [0, 5, 7] },
+};
+// guitar-ish voicing: bass root (E2..D#3), then chord tones spread above
+function chordNotes(root, q) {
+  const pc = ROOTS.indexOf(root);
+  const bass = 40 + ((pc - 4 + 12) % 12);
+  const iv = QUALITIES[q].iv;
+  const notes = [bass, bass + 7, bass + 12];
+  for (const i of iv.slice(1)) notes.push(bass + 12 + i);
+  if (iv.length === 3) notes.push(bass + 24);
+  return [...new Set(notes)].sort((a, b) => a - b);
+}
 
+// ---------- Gestures ----------
+// pattern = 5 chars for [thumb, index, middle, ring, pinky], "1" = finger up
+const FINGERS = ["โป้ง", "ชี้", "กลาง", "นาง", "ก้อย"];
+const FIST_PATTERN = "00000";
+const DEFAULTS = [
+  { pattern: "01000", root: "C",  q: "" },
+  { pattern: "01100", root: "G",  q: "" },
+  { pattern: "01110", root: "A",  q: "m" },
+  { pattern: "01111", root: "F",  q: "" },
+  { pattern: "11111", root: "E",  q: "m" },
+  { pattern: "10000", root: "D",  q: "m" },
+  { pattern: "01001", root: "E",  q: "7" },
+];
+const STORE_KEY = "gesture-chords:v1";
+let gestures = load();
+function load() {
+  try { const s = JSON.parse(localStorage.getItem(STORE_KEY)); if (Array.isArray(s) && s.length) return s; } catch {}
+  return DEFAULTS.map(g => ({ ...g }));
+}
+function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(gestures)); } catch {} }
+const chordName = g => g.root + g.q;
+const fingerIcons = p => [...p].map(c => c === "1" ? "●" : "○").join("");
+const FIST = { id: "—", stop: true };
+
+function lookup(pattern) {
+  if (pattern === FIST_PATTERN) return FIST;
+  const g = gestures.find(g => g.pattern === pattern);
+  return g ? { id: chordName(g), notes: chordNotes(g.root, g.q), pattern } : null;
+}
+
+// ---------- Chips ----------
 const chipsEl = document.getElementById("chips");
-for (const g of [...GESTURES, FIST]) {
-  const el = document.createElement("div");
-  el.className = "chip"; el.dataset.id = g.id;
-  el.innerHTML = `<div class="e">${g.emoji}</div><div class="n">${g.id}</div><div class="h">${g.hint}</div>`;
-  chipsEl.appendChild(el);
+function renderChips() {
+  chipsEl.innerHTML = "";
+  gestures.forEach((g, i) => {
+    const el = document.createElement("div");
+    el.className = "chip"; el.dataset.id = chordName(g);
+    el.innerHTML = `<div class="e" title="โป้ง ชี้ กลาง นาง ก้อย"></div><div class="n"></div><div class="k">ปุ่ม ${i + 1}</div>`;
+    el.querySelector(".e").textContent = fingerIcons(g.pattern);
+    el.querySelector(".n").textContent = chordName(g);
+    chipsEl.appendChild(el);
+  });
+  const f = document.createElement("div");
+  f.className = "chip"; f.dataset.id = "—";
+  f.innerHTML = `<div class="e">✊</div><div class="n">—</div><div class="k">กำมือ = หยุด</div>`;
+  chipsEl.appendChild(f);
 }
 function highlightChips(ids) {
   for (const el of chipsEl.children) el.classList.toggle("on", ids.includes(el.dataset.id));
 }
 
+// ---------- Editor ----------
+const editorEl = document.getElementById("editor");
+const rowsEl = document.getElementById("rows");
+const liveText = document.getElementById("liveText");
+let livePattern = null;
+
+function renderEditor() {
+  rowsEl.innerHTML = "";
+  const counts = {};
+  gestures.forEach(g => counts[g.pattern] = (counts[g.pattern] || 0) + 1);
+  gestures.forEach((g, i) => {
+    const row = document.createElement("div");
+    row.className = "row";
+    const dup = counts[g.pattern] > 1, fist = g.pattern === FIST_PATTERN;
+    if (dup || fist) row.classList.add("dup");
+
+    const fl = document.createElement("div"); fl.className = "line";
+    FINGERS.forEach((name, f) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "fbtn" + (g.pattern[f] === "1" ? " up" : "");
+      b.textContent = name;
+      b.setAttribute("aria-pressed", g.pattern[f] === "1");
+      b.onclick = () => {
+        const arr = [...g.pattern]; arr[f] = arr[f] === "1" ? "0" : "1"; g.pattern = arr.join("");
+        changed();
+      };
+      fl.appendChild(b);
+    });
+
+    const cl = document.createElement("div"); cl.className = "line";
+    const rs = document.createElement("select"); rs.id = "root-" + i; rs.setAttribute("aria-label", "โน้ตตัวหลัก");
+    ROOTS.forEach(r => rs.add(new Option(r, r, false, r === g.root)));
+    rs.onchange = () => { g.root = rs.value; changed(); };
+    const qs = document.createElement("select"); qs.id = "q-" + i; qs.setAttribute("aria-label", "ชนิดคอร์ด");
+    Object.entries(QUALITIES).forEach(([k, v]) => qs.add(new Option(v.name, k, false, k === g.q)));
+    qs.onchange = () => { g.q = qs.value; changed(); };
+    const cap = document.createElement("button"); cap.type = "button"; cap.className = "pill"; cap.textContent = "📷 ใช้ท่านี้";
+    cap.title = "ใช้ท่าที่กล้องเห็นตอนนี้";
+    cap.onclick = () => {
+      if (!livePattern) { statusEl.textContent = "กล้องยังไม่เห็นมือ — ชูมือแล้วกดใหม่"; return; }
+      g.pattern = livePattern; changed();
+    };
+    const play = document.createElement("button"); play.type = "button"; play.className = "pill"; play.textContent = "▶";
+    play.title = "ฟังคอร์ดนี้";
+    play.onclick = () => { if (!audio) initAudio(); audio.resume(); const v = playChord(chordNotes(g.root, g.q)); setTimeout(() => v.stop(), 900); };
+    const del = document.createElement("button"); del.type = "button"; del.className = "pill del"; del.textContent = "ลบ";
+    del.onclick = () => { gestures.splice(i, 1); changed(); };
+    cl.append(rs, qs, play, cap, del);
+
+    row.append(fl, cl);
+    if (fist) row.insertAdjacentHTML("beforeend", `<div class="warn">ท่านี้ (กำมือ) ใช้หยุดเสียง จะไม่เล่นคอร์ด</div>`);
+    else if (dup) row.insertAdjacentHTML("beforeend", `<div class="warn">ท่าซ้ำกับอันอื่น — จะใช้อันที่อยู่บนสุด</div>`);
+    rowsEl.appendChild(row);
+  });
+}
+function changed() {
+  save(); renderEditor(); renderChips();
+  // drop held chords so the new mapping applies right away
+  for (const st of Object.values(handState)) { st.voice?.stop(); st.voice = null; st.active = null; st.cand = null; }
+}
+document.getElementById("openEditor").onclick = () => { renderEditor(); editorEl.hidden = false; };
+document.getElementById("closeEditor").onclick = () => { editorEl.hidden = true; };
+document.getElementById("addRow").onclick = () => {
+  gestures.push({ pattern: livePattern && livePattern !== FIST_PATTERN ? livePattern : "11000", root: "C", q: "" });
+  changed(); rowsEl.scrollTop = rowsEl.scrollHeight;
+};
+document.getElementById("resetRows").onclick = () => { gestures = DEFAULTS.map(g => ({ ...g })); changed(); };
+
 // ---------- Audio ----------
-let audio, master, reverb;
+let audio, master;
 let mode = "pad";
 const midiToHz = m => 440 * Math.pow(2, (m - 69) / 12);
 
@@ -113,20 +270,19 @@ function initAudio() {
   // iPhone: let Web Audio play even when the silent switch is on (Safari 16.4+)
   try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch {}
   audio = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: "interactive" });
-  // pre-build pluck sounds in the background so the first strum has no hitch
-  const allNotes = [...new Set(GESTURES.flatMap(g => g.notes))];
-  const warm = () => { const m = allNotes.pop(); if (m == null) return; pluckBuffer(m); setTimeout(warm, 0); };
-  setTimeout(warm, 0);
   const comp = audio.createDynamicsCompressor();
   master = audio.createGain(); master.gain.value = 0.6;
-  // simple reverb from decaying noise impulse
-  reverb = audio.createConvolver();
+  const reverb = audio.createConvolver();
   const len = audio.sampleRate * 2.2, ir = audio.createBuffer(2, len, audio.sampleRate);
   for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3); }
   reverb.buffer = ir;
   const wet = audio.createGain(); wet.gain.value = 0.25;
   master.connect(comp); master.connect(reverb).connect(wet).connect(comp);
   comp.connect(audio.destination);
+  // pre-build pluck sounds in the background so the first strum has no hitch
+  const allNotes = [...new Set(gestures.flatMap(g => chordNotes(g.root, g.q)))];
+  const warm = () => { const m = allNotes.pop(); if (m == null) return; pluckBuffer(m); setTimeout(warm, 0); };
+  setTimeout(warm, 0);
 }
 
 // Karplus–Strong pluck
@@ -145,7 +301,6 @@ function pluckBuffer(midi) {
   pluckCache.set(midi, buf); return buf;
 }
 
-// a "voice" = a chord currently sounding for one hand; returns stop()
 function playChord(notes, vel = 0.8) {
   const t = audio.currentTime;
   const out = audio.createGain(); out.connect(master);
@@ -193,36 +348,30 @@ function playChord(notes, vel = 0.8) {
 
 // ---------- Hand gesture ----------
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-function fingersUp(lm) {
+function fingerPattern(lm) {
   const w = lm[0];
   const thumb = dist(lm[4], lm[17]) > dist(lm[3], lm[17]) * 1.05 && dist(lm[4], lm[5]) > dist(lm[2], lm[5]) * 0.9;
   const rest = [[8, 6], [12, 10], [16, 14], [20, 18]].map(([tip, pip]) => dist(lm[tip], w) > dist(lm[pip], w) * 1.12);
-  return [thumb, ...rest];
-}
-function classify(lm) {
-  const u = fingersUp(lm);
-  if (!u.some(Boolean)) return FIST;
-  return GESTURES.find(g => g.match(u)) || null;
+  return [thumb, ...rest].map(b => b ? "1" : "0").join("");
 }
 
-// per-hand state, keyed by handedness label ("Left"/"Right")
 const handState = {};
 const STABLE_FRAMES = 2; // frames a gesture must hold before it plays (lower = faster, higher = fewer mistakes)
 function updateHand(key, gesture, now) {
   const st = handState[key] ||= { cand: null, n: 0, active: null, voice: null, seen: now };
   st.seen = now;
-  if (gesture === st.cand) st.n++; else { st.cand = gesture; st.n = 1; }
-  if (st.n < STABLE_FRAMES || !gesture || gesture === st.active) return;
-  // gesture changed and is stable
+  const gid = gesture?.id ?? null;
+  if (gid === st.cand) st.n++; else { st.cand = gid; st.n = 1; }
+  if (st.n < STABLE_FRAMES || !gesture || gid === st.active?.id) return;
   st.voice?.stop(); st.voice = null;
   st.active = gesture;
-  if (gesture !== FIST) {
+  if (!gesture.stop && audio) {
     st.voice = playChord(gesture.notes);
-    ripples.push({ key, t: now, label: gesture.id });
+    ripples.push({ key, t: now });
   }
 }
 function releaseLostHands(now) {
-  for (const [k, st] of Object.entries(handState)) {
+  for (const st of Object.values(handState)) {
     if (now - st.seen > 250 && st.active) { st.voice?.stop(); st.voice = null; st.active = null; st.cand = null; }
   }
 }
@@ -230,21 +379,20 @@ function releaseLostHands(now) {
 // ---------- Keyboard fallback ----------
 let kbVoice = null;
 window.addEventListener("keydown", (e) => {
-  if (!audio || e.repeat) return;
-  const n = parseInt(e.key, 10);
-  if (n >= 1 && n <= GESTURES.length) {
+  if (!audio || e.repeat || e.target.tagName === "SELECT") return;
+  const n = parseInt(e.key, 10), g = gestures[n - 1];
+  if (g) {
     kbVoice?.stop();
-    kbVoice = playChord(GESTURES[n - 1].notes);
-    ripples.push({ key: "kb", t: performance.now(), label: GESTURES[n - 1].id, x: W / 2, y: H / 2 });
-    highlightChips([GESTURES[n - 1].id]);
+    kbVoice = playChord(chordNotes(g.root, g.q));
+    ripples.push({ key: "kb", t: performance.now(), label: chordName(g), x: W / 2, y: H / 2 });
+    highlightChips([chordName(g)]);
   }
 });
 window.addEventListener("keyup", (e) => {
   const n = parseInt(e.key, 10);
-  if (n >= 1 && n <= GESTURES.length && mode === "pad") { kbVoice?.stop(); kbVoice = null; highlightChips([]); }
+  if (gestures[n - 1] && mode === "pad") { kbVoice?.stop(); kbVoice = null; highlightChips([]); }
 });
 
-// browsers can suspend audio (tab switch, phone lock) — wake it on any touch/key
 function wakeAudio() { if (audio && audio.state !== "running") audio.resume().catch(() => {}); }
 addEventListener("pointerdown", wakeAudio);
 addEventListener("keydown", wakeAudio);
@@ -260,15 +408,14 @@ function testChime() {
       : "เสียงยังถูกบล็อก (" + audio.state + ") — แตะหน้าจอแล้วลองใหม่";
   });
 }
-document.getElementById("testSound").addEventListener("click", (e) => { e.stopPropagation(); testChime(); });
+document.getElementById("testSound").addEventListener("click", testChime);
 
 document.getElementById("modes").addEventListener("click", (e) => {
   const b = e.target.closest("button[data-mode]"); if (!b) return;
   mode = b.dataset.mode;
   for (const x of document.querySelectorAll("#modes button[data-mode]")) x.classList.toggle("on", x === b);
-  // restart held chords in new sound
   for (const st of Object.values(handState)) {
-    if (st.active && st.active !== FIST && audio) { st.voice?.stop(); st.voice = playChord(st.active.notes); }
+    if (st.active && !st.active.stop && audio) { st.voice?.stop(); st.voice = playChord(st.active.notes); }
   }
 });
 
@@ -292,15 +439,15 @@ async function loadModel() {
 }
 goBtn.addEventListener("click", async () => {
   initAudio(); await audio.resume();
-  testChime(); // short chime so you know sound works
-  document.getElementById("start").style.display = "none";
-  if (!landmarker) { statusEl.textContent = "กดปุ่ม 1–7 เพื่อเล่นคอร์ด"; return; }
+  testChime();
+  document.getElementById("start").hidden = true;
+  if (!landmarker) { statusEl.textContent = "กดปุ่มตัวเลขเพื่อเล่นคอร์ด"; return; }
   try {
     video.srcObject = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720, facingMode: "user" } });
     await video.play(); camOn = true;
     statusEl.textContent = "ทำท่าทางหน้ากล้องได้เลย";
   } catch (e) {
-    console.warn(e); statusEl.textContent = "เปิดกล้องไม่ได้ — กดปุ่ม 1–7 แทน";
+    console.warn(e); statusEl.textContent = "เปิดกล้องไม่ได้ — กดปุ่มตัวเลขแทน";
   }
 });
 
@@ -338,35 +485,43 @@ function frame() {
   }
 
   const activeIds = [];
+  livePattern = null;
   if (dims && results?.landmarks) {
     results.landmarks.forEach((lm, i) => {
       const key = results.handedness?.[i]?.[0]?.categoryName || "h" + i;
       const pts = lm.map(p => ({ x: (1 - p.x) * dims.dw + (W - dims.dw) / 2, y: p.y * dims.dh + (H - dims.dh) / 2 }));
       handPos[key] = pts[9];
-      updateHand(key, classify(lm), now);
+      const pattern = fingerPattern(lm);
+      if (!livePattern) livePattern = pattern;
+      updateHand(key, lookup(pattern), now);
       const st = handState[key];
-      const playing = st.active && st.active !== FIST;
+      const playing = st.active && !st.active.stop;
       if (st.active) activeIds.push(st.active.id);
-      // skeleton
       ctx.strokeStyle = playing ? "#ffb547" : "rgba(244,237,228,0.6)"; ctx.lineWidth = 3;
       for (const [a, b] of CONN) { ctx.beginPath(); ctx.moveTo(pts[a].x, pts[a].y); ctx.lineTo(pts[b].x, pts[b].y); ctx.stroke(); }
       ctx.fillStyle = "#fff";
       for (const p of pts) { ctx.beginPath(); ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2); ctx.fill(); }
-      // chord label above the hand
+      const top = pts.reduce((m, p) => p.y < m.y ? p : m, pts[0]);
+      ctx.textAlign = "center"; ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = 12;
       if (st.active) {
-        const top = pts.reduce((m, p) => p.y < m.y ? p : m, pts[0]);
-        ctx.font = "800 54px Prompt, sans-serif"; ctx.textAlign = "center";
+        ctx.font = "800 54px Prompt, sans-serif";
         ctx.fillStyle = playing ? "#ffb547" : "rgba(244,237,228,0.5)";
-        ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = 12;
-        ctx.fillText(st.active.id, pts[9].x, top.y - 24);
-        ctx.shadowBlur = 0;
+        ctx.fillText(st.active.stop ? "✊" : st.active.id, pts[9].x, top.y - 24);
+      } else {
+        ctx.font = "600 16px Prompt, sans-serif"; ctx.fillStyle = "rgba(244,237,228,0.6)";
+        ctx.fillText("ยังไม่ได้กำหนดท่านี้", pts[9].x, top.y - 24);
       }
+      ctx.shadowBlur = 0;
     });
     highlightChips(activeIds);
   }
+  if (!editorEl.hidden) {
+    liveText.textContent = livePattern
+      ? [...livePattern].map((c, f) => c === "1" ? FINGERS[f] : null).filter(Boolean).join(" + ") || "กำมือ"
+      : "— (ไม่เห็นมือ)";
+  }
   releaseLostHands(now);
 
-  // ripples on each new chord
   for (let i = ripples.length - 1; i >= 0; i--) {
     const r = ripples[i], age = (now - r.t) / 900;
     if (age > 1) { ripples.splice(i, 1); continue; }
@@ -381,6 +536,7 @@ function frame() {
   requestAnimationFrame(frame);
 }
 
+renderChips();
 loadModel();
 requestAnimationFrame(frame);
 </script>
