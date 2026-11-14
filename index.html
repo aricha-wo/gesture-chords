@@ -16,6 +16,7 @@
     --muted: #a99f95;
     --accent: #ffb547;
     --accent2: #ff5d73;
+    --drum: #7fd1ff;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
@@ -23,28 +24,33 @@
   [hidden] { display: none !important; }
   video { display: none; }
   canvas { position: fixed; inset: 0; width: 100%; height: 100%; }
-  button, select { font: inherit; color: inherit; }
-  .top { position: fixed; top: 16px; left: 16px; right: 16px; display: flex; justify-content: space-between;
-    align-items: center; gap: 12px; flex-wrap: wrap; }
+  button, select, input { font: inherit; color: inherit; }
+  .top { position: fixed; top: 16px; left: 16px; right: 16px; display: flex;
+    align-items: center; gap: 8px; flex-wrap: wrap; }
+  .top .spacer { flex: 1; }
   .card { background: var(--panel); backdrop-filter: blur(8px); border: 1px solid var(--line);
-    border-radius: 14px; padding: 10px 14px; }
-  .modes { display: flex; gap: 6px; flex-wrap: wrap; }
+    border-radius: 14px; padding: 8px 10px; }
+  .bar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
   .pill { font-size: 14px; border: 1px solid rgba(255,255,255,0.15); background: transparent;
     color: var(--muted); padding: 6px 14px; border-radius: 999px; cursor: pointer; }
   .pill.on { background: var(--accent); color: #1a0f0f; border-color: var(--accent); font-weight: 600; }
-  .pill:focus-visible, .fbtn:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  #beatBtn.on { background: var(--drum); border-color: var(--drum); }
+  #beatBtn.pulse { box-shadow: 0 0 0 4px rgba(127,209,255,0.45); }
+  .pill:focus-visible, .fbtn:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  #bpm { width: 90px; accent-color: var(--drum); }
+  #bpmVal { font-size: 13px; color: var(--muted); min-width: 56px; font-variant-numeric: tabular-nums; }
   #status { font-size: 13px; color: var(--muted); }
   .chips { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px;
-    flex-wrap: wrap; justify-content: center; width: calc(100% - 32px); max-width: 1000px; }
+    flex-wrap: wrap; justify-content: center; width: calc(100% - 32px); max-width: 1100px; }
   .chip { background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
     padding: 8px 12px; text-align: center; min-width: 78px; transition: transform .12s, background .12s, border-color .12s; }
   .chip .e { font-size: 15px; line-height: 1.4; letter-spacing: 1px; }
   .chip .n { font-weight: 800; font-size: 18px; color: var(--accent); }
+  .chip.drum .n { color: var(--drum); font-size: 15px; }
   .chip .k { font-size: 11px; color: var(--muted); }
   .chip.on { transform: translateY(-6px) scale(1.06); border-color: var(--accent); background: rgba(255,181,71,0.18); }
 
-  /* gesture editor */
-  #editor { position: fixed; top: 0; right: 0; bottom: 0; width: min(440px, 100%); background: var(--panel-solid);
+  #editor { position: fixed; top: 0; right: 0; bottom: 0; width: min(460px, 100%); background: var(--panel-solid);
     border-left: 1px solid var(--line); z-index: 20; display: flex; flex-direction: column; }
   #editor header { padding: 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); }
   #editor h2 { margin: 0; font-size: 18px; }
@@ -68,7 +74,7 @@
     z-index: 30; text-align: center; padding: 16px; }
   #start h1 { font-size: clamp(36px, 7vw, 72px); margin: 0; font-weight: 800;
     background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  #start p { color: var(--muted); max-width: 520px; margin: 0; line-height: 1.6; }
+  #start p { color: var(--muted); max-width: 540px; margin: 0; line-height: 1.6; }
   #go { font-weight: 600; font-size: 18px; padding: 14px 34px; border: 0; border-radius: 999px;
     background: linear-gradient(90deg, var(--accent), var(--accent2)); color: #1a0f0f; cursor: pointer; }
   #go:disabled { opacity: .5; cursor: wait; }
@@ -80,13 +86,22 @@
 <canvas id="canvas"></canvas>
 
 <div class="top">
-  <div class="card modes" id="modes">
+  <div class="card bar" id="modes">
     <button class="pill on" data-mode="pad">🎹 Pad</button>
     <button class="pill" data-mode="pluck">🎸 ดีด</button>
     <button class="pill" data-mode="piano">🎵 เปียโน</button>
-    <button class="pill" id="testSound" type="button">🔊 ทดสอบเสียง</button>
+  </div>
+  <div class="card bar">
+    <button class="pill" id="beatBtn" type="button">🥁 จังหวะ: ปิด</button>
+    <select id="beatPattern" aria-label="รูปแบบจังหวะ"></select>
+    <input id="bpm" type="range" min="60" max="160" value="96" aria-label="ความเร็ว (BPM)">
+    <span id="bpmVal">96 BPM</span>
+  </div>
+  <div class="card bar">
+    <button class="pill" id="testSound" type="button">🔊 ทดสอบ</button>
     <button class="pill" id="openEditor" type="button">✋ กำหนดท่าทาง</button>
   </div>
+  <div class="spacer"></div>
   <div class="card" id="status">กำลังเตรียม…</div>
 </div>
 
@@ -97,7 +112,7 @@
     <h2>กำหนดท่าทาง</h2>
     <button class="pill" id="closeEditor" type="button">เสร็จ</button>
   </header>
-  <div class="hint">แตะชื่อนิ้วเพื่อสลับ ชู/พับ หรือทำท่าหน้ากล้องแล้วกด 📷 ใช้ท่านี้ · กำมือ (พับทุกนิ้ว) สงวนไว้สำหรับหยุดเสียง · บันทึกอัตโนมัติในเครื่องนี้</div>
+  <div class="hint">แต่ละท่าตั้งได้ว่าจะเล่น <b>คอร์ด</b>, ตี <b>กลอง</b> 1 ครั้ง หรือ <b>เปิด/ปิดจังหวะกลอง</b> · แตะชื่อนิ้วเพื่อสลับ ชู/พับ หรือทำท่าหน้ากล้องแล้วกด 📷 · กำมือสงวนไว้สำหรับหยุดเสียง · บันทึกอัตโนมัติในเครื่องนี้</div>
   <div id="live">ท่าที่กล้องเห็นตอนนี้: <b id="liveText">—</b></div>
   <div id="rows"></div>
   <footer>
@@ -108,7 +123,7 @@
 
 <div id="start">
   <h1>Gesture Chords</h1>
-  <p>ชูมือให้กล้องเห็น แล้วทำท่าทาง — แต่ละท่าจะเล่นคอร์ดต่างกัน<br>ใช้ได้ทั้งสองมือ · ตั้งท่าเองได้ที่ปุ่ม ✋ กำหนดท่าทาง · ไม่มีกล้องก็กดปุ่มตัวเลขแทนได้</p>
+  <p>ทำท่ามือหน้ากล้อง แต่ละท่าจะเล่นคอร์ดหรือตีกลอง<br>🤙 (โป้ง + ก้อย) เปิด/ปิดจังหวะกลอง · ตั้งท่าเองได้ที่ ✋ กำหนดท่าทาง · ไม่มีกล้องก็กดปุ่มตัวเลขแทนได้</p>
   <button id="go" disabled>กำลังโหลดโมเดล…</button>
 </div>
 
@@ -131,7 +146,6 @@ const QUALITIES = {
   "maj7": { name: "maj7",    iv: [0, 4, 7, 11] },
   "sus4": { name: "sus4",    iv: [0, 5, 7] },
 };
-// guitar-ish voicing: bass root (E2..D#3), then chord tones spread above
 function chordNotes(root, q) {
   const pc = ROOTS.indexOf(root);
   const bass = 40 + ((pc - 4 + 12) % 12);
@@ -142,34 +156,70 @@ function chordNotes(root, q) {
   return [...new Set(notes)].sort((a, b) => a - b);
 }
 
+// ---------- Drums ----------
+const DRUMS = {
+  kick:  "กระเดื่อง",
+  snare: "สแนร์",
+  hihat: "ไฮแฮต",
+  clap:  "ปรบมือ",
+  tom:   "ทอม",
+  crash: "แฉ",
+};
+const PATTERNS = {
+  rock:  { name: "ร็อก",  kick: "x.......x.x.....", snare: "....x.......x...", hihat: "x.x.x.x.x.x.x.x." },
+  pop:   { name: "ป๊อป",  kick: "x.....x...x.....", snare: "....x.......x...", hihat: "xxxxxxxxxxxxxxxx" },
+  dance: { name: "แดนซ์", kick: "x...x...x...x...", snare: "....x.......x...", hihat: "..x...x...x...x.", clap: "....x.......x..." },
+  slow:  { name: "ช้าๆ",  kick: "x.........x.....", snare: "........x.......", hihat: "x...x...x...x..." },
+};
+
 // ---------- Gestures ----------
 // pattern = 5 chars for [thumb, index, middle, ring, pinky], "1" = finger up
+// type: "chord" | "drum" | "beat"
 const FINGERS = ["โป้ง", "ชี้", "กลาง", "นาง", "ก้อย"];
 const FIST_PATTERN = "00000";
 const DEFAULTS = [
-  { pattern: "01000", root: "C",  q: "" },
-  { pattern: "01100", root: "G",  q: "" },
-  { pattern: "01110", root: "A",  q: "m" },
-  { pattern: "01111", root: "F",  q: "" },
-  { pattern: "11111", root: "E",  q: "m" },
-  { pattern: "10000", root: "D",  q: "m" },
-  { pattern: "01001", root: "E",  q: "7" },
+  { pattern: "01000", type: "chord", root: "C", q: "" },
+  { pattern: "01100", type: "chord", root: "G", q: "" },
+  { pattern: "01110", type: "chord", root: "A", q: "m" },
+  { pattern: "01111", type: "chord", root: "F", q: "" },
+  { pattern: "11111", type: "chord", root: "E", q: "m" },
+  { pattern: "10000", type: "chord", root: "D", q: "m" },
+  { pattern: "01001", type: "chord", root: "E", q: "7" },
+  { pattern: "10001", type: "beat" },
+  { pattern: "11000", type: "drum", drum: "snare" },
+  { pattern: "11100", type: "drum", drum: "crash" },
 ];
-const STORE_KEY = "gesture-chords:v1";
+const STORE_KEY = "gesture-chords:v2";
 let gestures = load();
 function load() {
-  try { const s = JSON.parse(localStorage.getItem(STORE_KEY)); if (Array.isArray(s) && s.length) return s; } catch {}
-  return DEFAULTS.map(g => ({ ...g }));
+  try {
+    const v2 = localStorage.getItem(STORE_KEY);
+    const s = JSON.parse(v2 ?? localStorage.getItem("gesture-chords:v1"));
+    if (Array.isArray(s) && s.length) {
+      const list = s.map(g => ({ type: "chord", root: "C", q: "", drum: "kick", ...g }));
+      // older saves had chords only: add the new drum gestures where the pose is free
+      if (!v2) for (const d of DEFAULTS) if (d.type !== "chord" && !list.some(g => g.pattern === d.pattern)) list.push({ root: "C", q: "", drum: "kick", ...d });
+      return list;
+    }
+  } catch {}
+  return DEFAULTS.map(g => ({ root: "C", q: "", drum: "kick", ...g }));
 }
 function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(gestures)); } catch {} }
-const chordName = g => g.root + g.q;
+function labelOf(g) {
+  if (g.type === "drum") return "🥁 " + DRUMS[g.drum];
+  if (g.type === "beat") return "🥁 เปิด/ปิด";
+  return g.root + g.q;
+}
 const fingerIcons = p => [...p].map(c => c === "1" ? "●" : "○").join("");
-const FIST = { id: "—", stop: true };
+const FIST = { id: "✊", type: "stop" };
 
+function toAction(g) {
+  return { id: labelOf(g), type: g.type, drum: g.drum, notes: g.type === "chord" ? chordNotes(g.root, g.q) : null };
+}
 function lookup(pattern) {
   if (pattern === FIST_PATTERN) return FIST;
   const g = gestures.find(g => g.pattern === pattern);
-  return g ? { id: chordName(g), notes: chordNotes(g.root, g.q), pattern } : null;
+  return g ? toAction(g) : null;
 }
 
 // ---------- Chips ----------
@@ -178,14 +228,15 @@ function renderChips() {
   chipsEl.innerHTML = "";
   gestures.forEach((g, i) => {
     const el = document.createElement("div");
-    el.className = "chip"; el.dataset.id = chordName(g);
-    el.innerHTML = `<div class="e" title="โป้ง ชี้ กลาง นาง ก้อย"></div><div class="n"></div><div class="k">ปุ่ม ${i + 1}</div>`;
+    el.className = "chip" + (g.type !== "chord" ? " drum" : ""); el.dataset.id = labelOf(g);
+    el.innerHTML = `<div class="e" title="โป้ง ชี้ กลาง นาง ก้อย"></div><div class="n"></div><div class="k"></div>`;
     el.querySelector(".e").textContent = fingerIcons(g.pattern);
-    el.querySelector(".n").textContent = chordName(g);
+    el.querySelector(".n").textContent = labelOf(g);
+    el.querySelector(".k").textContent = i < 9 ? "ปุ่ม " + (i + 1) : "";
     chipsEl.appendChild(el);
   });
   const f = document.createElement("div");
-  f.className = "chip"; f.dataset.id = "—";
+  f.className = "chip"; f.dataset.id = "✊";
   f.innerHTML = `<div class="e">✊</div><div class="n">—</div><div class="k">กำมือ = หยุด</div>`;
   chipsEl.appendChild(f);
 }
@@ -198,6 +249,17 @@ const editorEl = document.getElementById("editor");
 const rowsEl = document.getElementById("rows");
 const liveText = document.getElementById("liveText");
 let livePattern = null;
+
+function mkSelect(id, label, entries, value, onchange) {
+  const s = document.createElement("select"); s.id = id; s.setAttribute("aria-label", label);
+  entries.forEach(([v, t]) => s.add(new Option(t, v, false, v === value)));
+  s.onchange = () => onchange(s.value);
+  return s;
+}
+function pillBtn(text, title, onclick, extra = "") {
+  const b = document.createElement("button"); b.type = "button"; b.className = "pill " + extra;
+  b.textContent = text; if (title) b.title = title; b.onclick = onclick; return b;
+}
 
 function renderEditor() {
   rowsEl.innerHTML = "";
@@ -213,53 +275,43 @@ function renderEditor() {
     FINGERS.forEach((name, f) => {
       const b = document.createElement("button");
       b.type = "button"; b.className = "fbtn" + (g.pattern[f] === "1" ? " up" : "");
-      b.textContent = name;
-      b.setAttribute("aria-pressed", g.pattern[f] === "1");
-      b.onclick = () => {
-        const arr = [...g.pattern]; arr[f] = arr[f] === "1" ? "0" : "1"; g.pattern = arr.join("");
-        changed();
-      };
+      b.textContent = name; b.setAttribute("aria-pressed", g.pattern[f] === "1");
+      b.onclick = () => { const a = [...g.pattern]; a[f] = a[f] === "1" ? "0" : "1"; g.pattern = a.join(""); changed(); };
       fl.appendChild(b);
     });
-
-    const cl = document.createElement("div"); cl.className = "line";
-    const rs = document.createElement("select"); rs.id = "root-" + i; rs.setAttribute("aria-label", "โน้ตตัวหลัก");
-    ROOTS.forEach(r => rs.add(new Option(r, r, false, r === g.root)));
-    rs.onchange = () => { g.root = rs.value; changed(); };
-    const qs = document.createElement("select"); qs.id = "q-" + i; qs.setAttribute("aria-label", "ชนิดคอร์ด");
-    Object.entries(QUALITIES).forEach(([k, v]) => qs.add(new Option(v.name, k, false, k === g.q)));
-    qs.onchange = () => { g.q = qs.value; changed(); };
-    const cap = document.createElement("button"); cap.type = "button"; cap.className = "pill"; cap.textContent = "📷 ใช้ท่านี้";
-    cap.title = "ใช้ท่าที่กล้องเห็นตอนนี้";
-    cap.onclick = () => {
+    fl.appendChild(pillBtn("📷", "ใช้ท่าที่กล้องเห็นตอนนี้", () => {
       if (!livePattern) { statusEl.textContent = "กล้องยังไม่เห็นมือ — ชูมือแล้วกดใหม่"; return; }
       g.pattern = livePattern; changed();
-    };
-    const play = document.createElement("button"); play.type = "button"; play.className = "pill"; play.textContent = "▶";
-    play.title = "ฟังคอร์ดนี้";
-    play.onclick = () => { if (!audio) initAudio(); audio.resume(); const v = playChord(chordNotes(g.root, g.q)); setTimeout(() => v.stop(), 900); };
-    const del = document.createElement("button"); del.type = "button"; del.className = "pill del"; del.textContent = "ลบ";
-    del.onclick = () => { gestures.splice(i, 1); changed(); };
-    cl.append(rs, qs, play, cap, del);
+    }));
+
+    const cl = document.createElement("div"); cl.className = "line";
+    cl.appendChild(mkSelect("type-" + i, "ประเภท", [["chord", "🎵 คอร์ด"], ["drum", "🥁 ตีกลอง"], ["beat", "🔁 เปิด/ปิดจังหวะ"]], g.type, v => { g.type = v; changed(); }));
+    if (g.type === "chord") {
+      cl.appendChild(mkSelect("root-" + i, "โน้ตตัวหลัก", ROOTS.map(r => [r, r]), g.root, v => { g.root = v; changed(); }));
+      cl.appendChild(mkSelect("q-" + i, "ชนิดคอร์ด", Object.entries(QUALITIES).map(([k, v]) => [k, v.name]), g.q, v => { g.q = v; changed(); }));
+    } else if (g.type === "drum") {
+      cl.appendChild(mkSelect("drum-" + i, "เสียงกลอง", Object.entries(DRUMS), g.drum, v => { g.drum = v; changed(); }));
+    }
+    if (g.type !== "beat") cl.appendChild(pillBtn("▶", "ลองฟัง", () => { ensureAudio(); preview(g); }));
+    cl.appendChild(pillBtn("ลบ", "", () => { gestures.splice(i, 1); changed(); }, "del"));
 
     row.append(fl, cl);
-    if (fist) row.insertAdjacentHTML("beforeend", `<div class="warn">ท่านี้ (กำมือ) ใช้หยุดเสียง จะไม่เล่นคอร์ด</div>`);
+    if (fist) row.insertAdjacentHTML("beforeend", `<div class="warn">ท่านี้ (กำมือ) ใช้หยุดเสียง จะไม่ทำงาน</div>`);
     else if (dup) row.insertAdjacentHTML("beforeend", `<div class="warn">ท่าซ้ำกับอันอื่น — จะใช้อันที่อยู่บนสุด</div>`);
     rowsEl.appendChild(row);
   });
 }
 function changed() {
   save(); renderEditor(); renderChips();
-  // drop held chords so the new mapping applies right away
   for (const st of Object.values(handState)) { st.voice?.stop(); st.voice = null; st.active = null; st.cand = null; }
 }
 document.getElementById("openEditor").onclick = () => { renderEditor(); editorEl.hidden = false; };
 document.getElementById("closeEditor").onclick = () => { editorEl.hidden = true; };
 document.getElementById("addRow").onclick = () => {
-  gestures.push({ pattern: livePattern && livePattern !== FIST_PATTERN ? livePattern : "11000", root: "C", q: "" });
+  gestures.push({ pattern: livePattern && livePattern !== FIST_PATTERN ? livePattern : "11000", type: "chord", root: "C", q: "", drum: "kick" });
   changed(); rowsEl.scrollTop = rowsEl.scrollHeight;
 };
-document.getElementById("resetRows").onclick = () => { gestures = DEFAULTS.map(g => ({ ...g })); changed(); };
+document.getElementById("resetRows").onclick = () => { gestures = DEFAULTS.map(g => ({ root: "C", q: "", drum: "kick", ...g })); changed(); };
 
 // ---------- Audio ----------
 let audio, master;
@@ -267,7 +319,6 @@ let mode = "pad";
 const midiToHz = m => 440 * Math.pow(2, (m - 69) / 12);
 
 function initAudio() {
-  // iPhone: let Web Audio play even when the silent switch is on (Safari 16.4+)
   try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch {}
   audio = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: "interactive" });
   const comp = audio.createDynamicsCompressor();
@@ -279,13 +330,13 @@ function initAudio() {
   const wet = audio.createGain(); wet.gain.value = 0.25;
   master.connect(comp); master.connect(reverb).connect(wet).connect(comp);
   comp.connect(audio.destination);
-  // pre-build pluck sounds in the background so the first strum has no hitch
-  const allNotes = [...new Set(gestures.flatMap(g => chordNotes(g.root, g.q)))];
+  drumBus = audio.createGain(); drumBus.gain.value = 0.9; drumBus.connect(comp);
+  const allNotes = [...new Set(gestures.filter(g => g.type === "chord").flatMap(g => chordNotes(g.root, g.q)))];
   const warm = () => { const m = allNotes.pop(); if (m == null) return; pluckBuffer(m); setTimeout(warm, 0); };
   setTimeout(warm, 0);
 }
+function ensureAudio() { if (!audio) initAudio(); audio.resume(); }
 
-// Karplus–Strong pluck
 const pluckCache = new Map();
 function pluckBuffer(midi) {
   if (pluckCache.has(midi)) return pluckCache.get(midi);
@@ -324,7 +375,7 @@ function playChord(notes, vel = 0.8) {
         o.start(t); o.stop(t + 3); nodes.push(o);
       }
     });
-  } else { // pad: sustains until stop()
+  } else {
     const lp = audio.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 1400; lp.Q.value = 0.5;
     const g = audio.createGain();
     g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.09 * vel, t + 0.03);
@@ -346,6 +397,83 @@ function playChord(notes, vel = 0.8) {
   };
 }
 
+// synthesized drum kit
+let drumBus, noiseBuf;
+function noise() {
+  if (!noiseBuf) {
+    noiseBuf = audio.createBuffer(1, audio.sampleRate * 1.5, audio.sampleRate);
+    const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  const s = audio.createBufferSource(); s.buffer = noiseBuf; return s;
+}
+function env(g, t, peak, decay) {
+  g.gain.setValueAtTime(peak, t); g.gain.exponentialRampToValueAtTime(0.001, t + decay);
+}
+function playDrum(name, t = audio.currentTime, vel = 1) {
+  const out = audio.createGain(); out.gain.value = vel; out.connect(drumBus);
+  if (name === "kick" || name === "tom") {
+    const o = audio.createOscillator(), g = audio.createGain();
+    const [f0, f1, dec] = name === "kick" ? [150, 42, 0.45] : [220, 110, 0.35];
+    o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dec * 0.6);
+    env(g, t, 1, dec); o.connect(g).connect(out); o.start(t); o.stop(t + dec + 0.05);
+  } else if (name === "snare") {
+    const n = noise(), hp = audio.createBiquadFilter(), g = audio.createGain();
+    hp.type = "highpass"; hp.frequency.value = 1200; env(g, t, 0.7, 0.2);
+    n.connect(hp).connect(g).connect(out); n.start(t); n.stop(t + 0.25);
+    const o = audio.createOscillator(), og = audio.createGain();
+    o.type = "triangle"; o.frequency.value = 185; env(og, t, 0.5, 0.1);
+    o.connect(og).connect(out); o.start(t); o.stop(t + 0.15);
+  } else if (name === "hihat" || name === "crash") {
+    const n = noise(), hp = audio.createBiquadFilter(), g = audio.createGain();
+    const [cut, peak, dec] = name === "hihat" ? [7000, 0.35, 0.05] : [4500, 0.5, 1.3];
+    hp.type = "highpass"; hp.frequency.value = cut; env(g, t, peak, dec);
+    n.connect(hp).connect(g).connect(out); n.start(t); n.stop(t + dec + 0.05);
+  } else if (name === "clap") {
+    const n = noise(), bp = audio.createBiquadFilter(), g = audio.createGain();
+    bp.type = "bandpass"; bp.frequency.value = 1500; bp.Q.value = 0.8;
+    g.gain.setValueAtTime(0, t);
+    for (const k of [0, 0.012, 0.024]) { g.gain.setValueAtTime(0.8, t + k); g.gain.exponentialRampToValueAtTime(0.05, t + k + 0.01); }
+    g.gain.setValueAtTime(0.6, t + 0.035); g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+    n.connect(bp).connect(g).connect(out); n.start(t); n.stop(t + 0.25);
+  }
+}
+
+function preview(g) {
+  if (g.type === "drum") playDrum(g.drum);
+  else if (g.type === "chord") { const v = playChord(chordNotes(g.root, g.q)); setTimeout(() => v.stop(), 900); }
+}
+
+// ---------- Beat loop ----------
+const beatBtn = document.getElementById("beatBtn");
+const patternSel = document.getElementById("beatPattern");
+const bpmEl = document.getElementById("bpm"), bpmVal = document.getElementById("bpmVal");
+Object.entries(PATTERNS).forEach(([k, p]) => patternSel.add(new Option(p.name, k)));
+bpmEl.oninput = () => { bpmVal.textContent = bpmEl.value + " BPM"; };
+let beatOn = false, beatTimer = null, nextStepTime = 0, step = 0;
+function scheduler() {
+  const stepDur = 60 / Number(bpmEl.value) / 4;
+  const pat = PATTERNS[patternSel.value];
+  while (nextStepTime < audio.currentTime + 0.12) {
+    for (const d of Object.keys(DRUMS)) {
+      if (pat[d]?.[step] === "x") playDrum(d, nextStepTime, d === "hihat" && step % 4 ? 0.6 : 1);
+    }
+    if (step % 4 === 0) {
+      const delay = Math.max(0, (nextStepTime - audio.currentTime) * 1000);
+      setTimeout(() => { beatBtn.classList.add("pulse"); setTimeout(() => beatBtn.classList.remove("pulse"), 90); }, delay);
+    }
+    nextStepTime += stepDur; step = (step + 1) % 16;
+  }
+}
+function setBeat(on) {
+  ensureAudio();
+  beatOn = on;
+  beatBtn.classList.toggle("on", on);
+  beatBtn.textContent = on ? "🥁 จังหวะ: เปิด" : "🥁 จังหวะ: ปิด";
+  clearInterval(beatTimer);
+  if (on) { step = 0; nextStepTime = audio.currentTime + 0.05; scheduler(); beatTimer = setInterval(scheduler, 25); }
+}
+beatBtn.onclick = () => setBeat(!beatOn);
+
 // ---------- Hand gesture ----------
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 function fingerPattern(lm) {
@@ -355,19 +483,26 @@ function fingerPattern(lm) {
   return [thumb, ...rest].map(b => b ? "1" : "0").join("");
 }
 
+function trigger(action) {
+  if (action.type === "chord") return playChord(action.notes);
+  if (action.type === "drum") playDrum(action.drum);
+  if (action.type === "beat") setBeat(!beatOn);
+  return null;
+}
+
 const handState = {};
 const STABLE_FRAMES = 2; // frames a gesture must hold before it plays (lower = faster, higher = fewer mistakes)
-function updateHand(key, gesture, now) {
+function updateHand(key, action, now) {
   const st = handState[key] ||= { cand: null, n: 0, active: null, voice: null, seen: now };
   st.seen = now;
-  const gid = gesture?.id ?? null;
-  if (gid === st.cand) st.n++; else { st.cand = gid; st.n = 1; }
-  if (st.n < STABLE_FRAMES || !gesture || gid === st.active?.id) return;
+  const id = action?.id ?? null;
+  if (id === st.cand) st.n++; else { st.cand = id; st.n = 1; }
+  if (st.n < STABLE_FRAMES || !action || id === st.active?.id) return;
   st.voice?.stop(); st.voice = null;
-  st.active = gesture;
-  if (!gesture.stop && audio) {
-    st.voice = playChord(gesture.notes);
-    ripples.push({ key, t: now });
+  st.active = action;
+  if (action.type !== "stop" && audio) {
+    st.voice = trigger(action);
+    ripples.push({ key, t: now, drum: action.type !== "chord" });
   }
 }
 function releaseLostHands(now) {
@@ -379,18 +514,19 @@ function releaseLostHands(now) {
 // ---------- Keyboard fallback ----------
 let kbVoice = null;
 window.addEventListener("keydown", (e) => {
-  if (!audio || e.repeat || e.target.tagName === "SELECT") return;
+  if (!audio || e.repeat || e.target.tagName === "SELECT" || e.target.tagName === "INPUT") return;
   const n = parseInt(e.key, 10), g = gestures[n - 1];
-  if (g) {
-    kbVoice?.stop();
-    kbVoice = playChord(chordNotes(g.root, g.q));
-    ripples.push({ key: "kb", t: performance.now(), label: chordName(g), x: W / 2, y: H / 2 });
-    highlightChips([chordName(g)]);
-  }
+  if (!g) return;
+  const a = toAction(g);
+  if (a.type === "chord") kbVoice?.stop();
+  const v = trigger(a);
+  if (v) kbVoice = v;
+  ripples.push({ key: "kb", t: performance.now(), label: a.id, x: W / 2, y: H / 2, drum: a.type !== "chord" });
+  highlightChips([a.id]);
 });
 window.addEventListener("keyup", (e) => {
-  const n = parseInt(e.key, 10);
-  if (gestures[n - 1] && mode === "pad") { kbVoice?.stop(); kbVoice = null; highlightChips([]); }
+  const g = gestures[parseInt(e.key, 10) - 1];
+  if (g?.type === "chord" && mode === "pad") { kbVoice?.stop(); kbVoice = null; highlightChips([]); }
 });
 
 function wakeAudio() { if (audio && audio.state !== "running") audio.resume().catch(() => {}); }
@@ -399,7 +535,7 @@ addEventListener("keydown", wakeAudio);
 document.addEventListener("visibilitychange", wakeAudio);
 
 function testChime() {
-  if (!audio) initAudio();
+  ensureAudio();
   audio.resume().then(() => {
     const v = playChord([60, 64, 67, 72], 1);
     setTimeout(() => v.stop(), 900);
@@ -415,7 +551,7 @@ document.getElementById("modes").addEventListener("click", (e) => {
   mode = b.dataset.mode;
   for (const x of document.querySelectorAll("#modes button[data-mode]")) x.classList.toggle("on", x === b);
   for (const st of Object.values(handState)) {
-    if (st.active && !st.active.stop && audio) { st.voice?.stop(); st.voice = playChord(st.active.notes); }
+    if (st.active?.type === "chord" && audio) { st.voice?.stop(); st.voice = playChord(st.active.notes); }
   }
 });
 
@@ -441,7 +577,7 @@ goBtn.addEventListener("click", async () => {
   initAudio(); await audio.resume();
   testChime();
   document.getElementById("start").hidden = true;
-  if (!landmarker) { statusEl.textContent = "กดปุ่มตัวเลขเพื่อเล่นคอร์ด"; return; }
+  if (!landmarker) { statusEl.textContent = "กดปุ่มตัวเลขเพื่อเล่น"; return; }
   try {
     video.srcObject = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720, facingMode: "user" } });
     await video.play(); camOn = true;
@@ -495,18 +631,18 @@ function frame() {
       if (!livePattern) livePattern = pattern;
       updateHand(key, lookup(pattern), now);
       const st = handState[key];
-      const playing = st.active && !st.active.stop;
-      if (st.active) activeIds.push(st.active.id);
-      ctx.strokeStyle = playing ? "#ffb547" : "rgba(244,237,228,0.6)"; ctx.lineWidth = 3;
-      for (const [a, b] of CONN) { ctx.beginPath(); ctx.moveTo(pts[a].x, pts[a].y); ctx.lineTo(pts[b].x, pts[b].y); ctx.stroke(); }
+      const a = st.active;
+      if (a) activeIds.push(a.id);
+      const color = !a || a.type === "stop" ? "rgba(244,237,228,0.6)" : a.type === "chord" ? "#ffb547" : "#7fd1ff";
+      ctx.strokeStyle = color; ctx.lineWidth = 3;
+      for (const [p, q] of CONN) { ctx.beginPath(); ctx.moveTo(pts[p].x, pts[p].y); ctx.lineTo(pts[q].x, pts[q].y); ctx.stroke(); }
       ctx.fillStyle = "#fff";
       for (const p of pts) { ctx.beginPath(); ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2); ctx.fill(); }
       const top = pts.reduce((m, p) => p.y < m.y ? p : m, pts[0]);
       ctx.textAlign = "center"; ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = 12;
-      if (st.active) {
-        ctx.font = "800 54px Prompt, sans-serif";
-        ctx.fillStyle = playing ? "#ffb547" : "rgba(244,237,228,0.5)";
-        ctx.fillText(st.active.stop ? "✊" : st.active.id, pts[9].x, top.y - 24);
+      if (a) {
+        ctx.font = a.type === "chord" ? "800 54px Prompt, sans-serif" : "800 30px Prompt, sans-serif";
+        ctx.fillStyle = color; ctx.fillText(a.id, pts[9].x, top.y - 24);
       } else {
         ctx.font = "600 16px Prompt, sans-serif"; ctx.fillStyle = "rgba(244,237,228,0.6)";
         ctx.fillText("ยังไม่ได้กำหนดท่านี้", pts[9].x, top.y - 24);
@@ -526,11 +662,12 @@ function frame() {
     const r = ripples[i], age = (now - r.t) / 900;
     if (age > 1) { ripples.splice(i, 1); continue; }
     const p = r.x != null ? r : handPos[r.key]; if (!p) continue;
-    ctx.strokeStyle = `rgba(255,93,115,${1 - age})`; ctx.lineWidth = 4 * (1 - age);
+    const rgb = r.drum ? "127,209,255" : "255,93,115";
+    ctx.strokeStyle = `rgba(${rgb},${1 - age})`; ctx.lineWidth = 4 * (1 - age);
     ctx.beginPath(); ctx.arc(p.x, p.y, 40 + age * 180, 0, Math.PI * 2); ctx.stroke();
     if (r.key === "kb") {
-      ctx.font = "800 96px Prompt, sans-serif"; ctx.textAlign = "center";
-      ctx.fillStyle = `rgba(255,181,71,${1 - age})`; ctx.fillText(r.label, p.x, p.y + 32);
+      ctx.font = "800 72px Prompt, sans-serif"; ctx.textAlign = "center";
+      ctx.fillStyle = `rgba(${r.drum ? "127,209,255" : "255,181,71"},${1 - age})`; ctx.fillText(r.label, p.x, p.y + 24);
     }
   }
   requestAnimationFrame(frame);
